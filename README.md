@@ -1,7 +1,6 @@
 # Rhasspy Amazon Polly TTS Hermes MQTT Service
 
-[![Continous Integration](https://github.com/digitalfiz/rhasspy-tts-polly-hermes/workflows/Tests/badge.svg)](https://github.com/rhasspy/rhasspy-tts-polly-hermes/actions)
-[![GitHub license](https://img.shields.io/github/license/rhasspy/rhasspy-tts-polly-hermes.svg)](https://github.com/rhasspy/rhasspy-tts-polly-hermes/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/github/license/digitalfiz/rhasspy-tts-polly-hermes.svg)](https://github.com/digitalfiz/rhasspy-tts-polly-hermes/blob/master/LICENSE)
 
 Implements `hermes/tts` functionality from [Hermes protocol](https://docs.snips.ai/reference/hermes) using [Amazon Polly](https://docs.aws.amazon.com/polly/latest/dg/what-is.html).
 
