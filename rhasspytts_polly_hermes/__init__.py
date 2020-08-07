@@ -83,6 +83,8 @@ class TtsHermesMqtt(HermesClient):
         """Run TTS system and publish WAV data."""
         wav_bytes: typing.Optional[bytes] = None
 
+        _LOGGER.debug('Polly initialized...')
+
         try:
             # Try to pull WAV from cache first
             sentence_hash = self.get_sentence_hash(say.text)
@@ -201,13 +203,20 @@ class TtsHermesMqtt(HermesClient):
         voices: typing.List[Voice] = []
 
         try:
+            _LOGGER.debug('Calling AWS to get voices...')
+
+
             response = self.polly_client.describe_voices(
                 Engine=self.engine,
                 LanguageCode=self.language_code,
                 IncludeAdditionalLanguageCodes=True
             )
 
+            
+            _LOGGER.debug('Got voices, looping now')
+
             for v in response['Voices']:
+                _LOGGER.debug(f'Adding {v['Id']} to list...')
                 voice = Voice(voice_id=v['Id'])
                 voice.description = v['Id']
                 voices.append(voice)
