@@ -44,16 +44,10 @@ def main():
         help='Chosen engine (default: neural)'
     )
     parser.add_argument(
-        '--output-format',
-        choices=VALID_OUTPUT_FORMATS,
-        default='pcm',
-        help='Chosen engine (default: pcm)'
-    )
-    parser.add_argument(
         '--sample-rate',
-        default=22050,
+        default=16000,
         type=int,
-        help='Chosen sample rate of the outpt wave sample (default: 22050)',
+        help='Chosen sample rate of the outpt wave sample (default: 16000)',
     )
     parser.add_argument(
         '--language-code',
@@ -76,7 +70,7 @@ def main():
     hermes_cli.setup_logging(args)
     _LOGGER.debug(args)
 
-    args.credentials_json = Path(args.credentials_json)
+    args.credentials = Path(args.credentials)
     args.cache_dir = Path(args.cache_dir)
 
     # Listen for messages
@@ -87,7 +81,6 @@ def main():
         cache_dir=args.cache_dir,
         voice=args.voice,
         engine=args.engine,
-        output_format=args.output_format,
         sample_rate=args.sample_rate,
         language_code=args.language_code,
         region=args.region,

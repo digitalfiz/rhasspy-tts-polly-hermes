@@ -32,8 +32,7 @@ class TtsHermesMqtt(HermesClient):
         cache_dir: Path,
         voice: str = 'Joanna',
         engine: str = 'neural',
-        output_format: str = 'pcm',
-        sample_rate: int = 22050,
+        sample_rate: int = 16000,
         language_code: str = 'en-US',
         region: str = 'us-east-1',
         play_command: typing.Optional[str] = None,
@@ -44,12 +43,12 @@ class TtsHermesMqtt(HermesClient):
         self.subscribe(TtsSay, GetVoices, AudioPlayFinished)
 
         self.credentials = credentials
-        os.environ['AWS_SHARED_CREDENTIALS_FILE'] = self.credentials
+        os.environ['AWS_SHARED_CREDENTIALS_FILE'] = str(self.credentials)
 
         self.cache_dir = cache_dir
         self.voice = voice
         self.engine = engine
-        self.output_format = output_format
+        self.output_format = 'pcm'
         self.sample_rate = int(sample_rate)
         self.language_code = language_code
         
@@ -66,7 +65,7 @@ class TtsHermesMqtt(HermesClient):
         # Create cache directory in profile if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        self.polly_client = boto3.Session().client('polly')
+        self.polly_client = boto3.Session(region_name=os.environ['AWS_REGION']).client('polly')
 
     # -------------------------------------------------------------------------
 
@@ -128,7 +127,22 @@ class TtsHermesMqtt(HermesClient):
                         VoiceId=self.voice
                     )
 
-                wav_bytes = response['AudioStream'].read()
+                    # For some reason the PCM data that we get isn't compatible
+                    # With `wave`. So we save it and reopen it. Gotta be a better way?
+                    wave_file_path = f'/tmp/{sentence_hash.hexdigest()}.wav'
+                    with wave.open(wave_file_path, 'wb') as wav_file:
+                        wav_file.setparams((1, 2, 16000, 0, 'NONE', 'NONE'))
+                        wav_file.writeframes(response['AudioStream'].read())
+                        
+                        # if you need wav in binary
+                        with open(wave_file_path, 'rb') as wav_file:
+                            # get wav binary using read() method
+                            wav_bytes = wav_file.read()
+
+                    if os.path.exists(wave_file_path):
+                        os.unlink(wave_file_path)
+
+
 
             assert wav_bytes, 'No WAV data received'
             _LOGGER.debug('Got %s byte(s) of WAV data', len(wav_bytes))
@@ -173,8 +187,9 @@ class TtsHermesMqtt(HermesClient):
 
                 try:
                     # Wait for audio to finished playing or timeout
-                    wav_duration = TtsHermesMqtt.get_wav_duration(wav_bytes)
-                    wav_timeout = wav_duration + self.finished_timeout_extra
+                    # wav_duration = TtsHermesMqtt.get_wav_duration(wav_bytes)
+                    # wav_timeout = wav_duration + self.finished_timeout_extra
+                    wav_timeout = 10000
 
                     _LOGGER.debug('Waiting for play finished (timeout=%s)', wav_timeout)
                     await asyncio.wait_for(finished_event.wait(), timeout=wav_timeout)
@@ -216,7 +231,7 @@ class TtsHermesMqtt(HermesClient):
             _LOGGER.debug('Got voices, looping now')
 
             for v in response['Voices']:
-                _LOGGER.debug(f'Adding {v['Id']} to list...')
+                _LOGGER.debug(f'Adding {v["Id"]} to list...')
                 voice = Voice(voice_id=v['Id'])
                 voice.description = v['Id']
                 voices.append(voice)
@@ -276,6 +291,7 @@ class TtsHermesMqtt(HermesClient):
     def get_wav_duration(wav_bytes: bytes) -> float:
         """Return the real-time duration of a WAV file"""
         with io.BytesIO(wav_bytes) as wav_buffer:
+            wav_buffer.seek(0)
             wav_file: wave.Wave_read = wave.open(wav_buffer, 'rb')
             with wav_file:
                 width = wav_file.getsampwidth()
