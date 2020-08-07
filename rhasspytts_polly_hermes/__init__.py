@@ -17,7 +17,7 @@ from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
 from rhasspyhermes.tts import GetVoices, TtsError, TtsSay, TtsSayFinished, Voice, Voices
 
-_LOGGER = logging.getLogger("rhasspytts_polly_hermes")
+_LOGGER = logging.getLogger('rhasspytts_polly_hermes')
 
 # -----------------------------------------------------------------------------
 
@@ -30,21 +30,21 @@ class TtsHermesMqtt(HermesClient):
         client,
         credentials: Path,
         cache_dir: Path,
-        voice: str = "Joanna",
-        engine: str = "neural",
-        output_format: str = "pcm",
+        voice: str = 'Joanna',
+        engine: str = 'neural',
+        output_format: str = 'pcm',
         sample_rate: int = 22050,
-        language_code: str = "en-US",
-        aws_region: str = "us-east-1",
+        language_code: str = 'en-US',
+        region: str = 'us-east-1',
         play_command: typing.Optional[str] = None,
         site_ids: typing.Optional[typing.List[str]] = None,
     ):
-        super().__init__("rhasspytts_polly_hermes", client, site_ids=site_ids)
+        super().__init__('rhasspytts_polly_hermes', client, site_ids=site_ids)
 
         self.subscribe(TtsSay, GetVoices, AudioPlayFinished)
 
         self.credentials = credentials
-        os.environ["AWS_SHARED_CREDENTIALS_FILE"] = self.credentials
+        os.environ['AWS_SHARED_CREDENTIALS_FILE'] = self.credentials
 
         self.cache_dir = cache_dir
         self.voice = voice
@@ -52,7 +52,10 @@ class TtsHermesMqtt(HermesClient):
         self.output_format = output_format
         self.sample_rate = int(sample_rate)
         self.language_code = language_code
-        self.aws_region = aws_region
+        
+        self.region = region
+        os.environ['AWS_REGION'] = self.region
+
         self.play_command = play_command
 
         self.play_finished_events: typing.Dict[typing.Optional[str], asyncio.Event] = {}
@@ -83,19 +86,19 @@ class TtsHermesMqtt(HermesClient):
         try:
             # Try to pull WAV from cache first
             sentence_hash = self.get_sentence_hash(say.text)
-            cached_wav_path = self.cache_dir / f"{sentence_hash.hexdigest()}.wav"
+            cached_wav_path = self.cache_dir / f'{sentence_hash.hexdigest()}.wav'
 
             if cached_wav_path.is_file():
                 # Use WAV file from cache
-                _LOGGER.debug("Using WAV from cache: %s", cached_wav_path)
+                _LOGGER.debug('Using WAV from cache: %s', cached_wav_path)
                 wav_bytes = cached_wav_path.read_bytes()
 
             if not wav_bytes:
                 # Run text to speech
-                assert self.polly_client, "No Boto3 Client"
+                assert self.polly_client, 'No Boto3 Client'
 
                 _LOGGER.debug(
-                    "Calling AWS (lang=%s, voice=%s, engine=%s, rate=%s)",
+                    'Calling AWS (lang=%s, voice=%s, engine=%s, rate=%s)',
                     self.language_code,
                     self.voice,
                     self.engine,
@@ -125,8 +128,8 @@ class TtsHermesMqtt(HermesClient):
 
                 wav_bytes = response['AudioStream'].read()
 
-            assert wav_bytes, "No WAV data received"
-            _LOGGER.debug("Got %s byte(s) of WAV data", len(wav_bytes))
+            assert wav_bytes, 'No WAV data received'
+            _LOGGER.debug('Got %s byte(s) of WAV data', len(wav_bytes))
 
             if wav_bytes:
                 finished_event = asyncio.Event()
@@ -145,7 +148,7 @@ class TtsHermesMqtt(HermesClient):
                         # Don't wait for playFinished
                         finished_event.set()
                     except Exception as e:
-                        _LOGGER.exception("play_command")
+                        _LOGGER.exception('play_command')
                         yield AudioPlayError(
                             error=str(e),
                             context=say.id,
@@ -159,11 +162,11 @@ class TtsHermesMqtt(HermesClient):
 
                     yield (
                         AudioPlayBytes(wav_bytes=wav_bytes),
-                        {"site_id": say.site_id, "request_id": request_id},
+                        {'site_id': say.site_id, 'request_id': request_id},
                     )
 
                 # Save to cache
-                with open(cached_wav_path, "wb") as cached_wav_file:
+                with open(cached_wav_path, 'wb') as cached_wav_file:
                     cached_wav_file.write(wav_bytes)
 
                 try:
@@ -171,13 +174,13 @@ class TtsHermesMqtt(HermesClient):
                     wav_duration = TtsHermesMqtt.get_wav_duration(wav_bytes)
                     wav_timeout = wav_duration + self.finished_timeout_extra
 
-                    _LOGGER.debug("Waiting for play finished (timeout=%s)", wav_timeout)
+                    _LOGGER.debug('Waiting for play finished (timeout=%s)', wav_timeout)
                     await asyncio.wait_for(finished_event.wait(), timeout=wav_timeout)
                 except asyncio.TimeoutError:
-                    _LOGGER.warning("Did not receive playFinished before timeout")
+                    _LOGGER.warning('Did not receive playFinished before timeout')
 
         except Exception as e:
-            _LOGGER.exception("handle_say")
+            _LOGGER.exception('handle_say')
             yield TtsError(
                 error=str(e),
                 context=say.id,
@@ -209,7 +212,7 @@ class TtsHermesMqtt(HermesClient):
                 voice.description = v['Id']
                 voices.append(voice)      
         except Exception as e:
-            _LOGGER.exception("handle_get_voices")
+            _LOGGER.exception('handle_get_voices')
             yield TtsError(
                 error=str(e), context=get_voices.id, site_id=get_voices.site_id
             )
@@ -239,7 +242,7 @@ class TtsHermesMqtt(HermesClient):
             if finished_event:
                 finished_event.set()
         else:
-            _LOGGER.warning("Unexpected message: %s", message)
+            _LOGGER.warning('Unexpected message: %s', message)
 
     # -------------------------------------------------------------------------
 
@@ -247,14 +250,14 @@ class TtsHermesMqtt(HermesClient):
         """Get hash for cache."""
         m = hashlib.md5()
         m.update(
-            "_".join(
+            '_'.join(
                 [
                     sentence,
                     self.voice,
                     str(self.sample_rate),
                     self.language_code,
                 ]
-            ).encode("utf-8")
+            ).encode('utf-8')
         )
 
         return m
@@ -263,7 +266,7 @@ class TtsHermesMqtt(HermesClient):
     def get_wav_duration(wav_bytes: bytes) -> float:
         """Return the real-time duration of a WAV file"""
         with io.BytesIO(wav_bytes) as wav_buffer:
-            wav_file: wave.Wave_read = wave.open(wav_buffer, "rb")
+            wav_file: wave.Wave_read = wave.open(wav_buffer, 'rb')
             with wav_file:
                 width = wav_file.getsampwidth()
                 rate = wav_file.getframerate()
