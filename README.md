@@ -1,4 +1,4 @@
-# Rhasspy TTS Hermes MQTT Service
+# Rhasspy Amazon Polly TTS Hermes MQTT Service
 
 [![Continous Integration](https://github.com/digitalfiz/rhasspy-tts-polly-hermes/workflows/Tests/badge.svg)](https://github.com/rhasspy/rhasspy-tts-polly-hermes/actions)
 [![GitHub license](https://img.shields.io/github/license/rhasspy/rhasspy-tts-polly-hermes.svg)](https://github.com/rhasspy/rhasspy-tts-polly-hermes/blob/master/LICENSE)
